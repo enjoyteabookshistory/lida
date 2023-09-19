@@ -1,0 +1,371 @@
+schemaVersion: 3
+meta:
+  sourceVersionId: 2950d6fb-c036-4e2c-bf0f-fd6db701c2b3 # DO NOT CHANGE - Hex uses this to match up project versions when reimporting the file
+  description: null
+  projectId: 2d226275-04c7-446d-a4f7-e234fe0d0277 # DO NOT CHANGE - Unique ID of the project from which this file was generated
+  title: LIDA Use Cases
+  timezone: null
+  appTheme: SYS_PREF
+  codeLanguage: PYTHON
+  status: null
+  categories: []
+  castDecimalsDefault: true
+  logicQueryCacheTimeout: null
+  publishedQueryCacheTimeout: null
+projectAssets:
+  dataConnections: []
+  envVars: []
+  secrets: []
+sharedAssets:
+  secrets:
+    - secretName: OPENAI_API_KEY
+  vcsPackages:
+    - vcsPackageId: 328f9d62-8334-4dd2-baed-6daa762001c7 # enjoyteabookshistory/streamlit-jupyter
+    - vcsPackageId: d2ef728e-549a-41ed-a662-b5373663e81b # enjoyteabookshistory/lida
+  dataConnections: []
+  externalFileIntegrations: []
+cells:
+  - cellType: BLOCK
+    cellId: fcf9cd35-f06d-4812-b4ae-cb4c9f561e06 # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: null
+    config:
+      blockConfig:
+        sqlCellId: bd211a4a-e030-4779-89e5-8318cc976229
+        chartCellId: 6e5bc3e2-7d6e-4fbd-881d-5feabe43c080
+        activeTab: preview
+      cells:
+        - cellType: SQL
+          cellId: bd211a4a-e030-4779-89e5-8318cc976229
+          cellLabel: Optiondata
+          config:
+            source: SELECT * FROM "option.csv";
+            dataFrameCell: true
+            dataConnectionId: null
+            resultVariableName: optionData
+            useRichDisplay: false
+            sqlCellOutputType: PANDAS
+            useQueryMode: false
+            castDecimals: true
+            useNativeDates: true
+            outputFilteredResult: true
+            allowDuplicateColumns: false
+            tableDisplayConfig:
+              pageSize: 50
+              height: null
+              hideIcons: false
+              hideIndex: false
+              defaultSortColumn: null
+              defaultSortIndexColumn: null
+              defaultSortDirection: ASC
+              conditionalFormatting: null
+              filters: null
+              columnProperties: []
+              columnOrdering: null
+              pinnedColumns: null
+              hiddenColumns: null
+        - cellType: CHARTV2
+          cellId: 6e5bc3e2-7d6e-4fbd-881d-5feabe43c080
+          cellLabel: null
+          config:
+            height: null
+            chartSpec:
+              type: layered
+              layers:
+                - id: e914a004-f271-4647-8cf8-f20da5f17a66
+                  xAxis:
+                    type: string
+                    style:
+                      grid:
+                        style: solid
+                      ticks: {}
+                      labels: {}
+                    dataFrameColumn: symbol
+                  series:
+                    - id: 2dcd03f1-6cf2-4964-9223-b3b992011764
+                      type: bar
+                      axis:
+                        type: number
+                        style:
+                          grid:
+                            style: solid
+                          ticks: {}
+                          labels: {}
+                        aggregate: sum
+                      dataFrameColumns:
+                        - last
+                      colorOrder: ascending
+                      color:
+                        type: static
+                      opacity:
+                        type: static
+                        value: 1
+                      tooltip:
+                        type: auto
+                      barWidth: 1
+                      orientation: vertical
+                      layout: grouped
+                  dataFrame: optionData
+              settings:
+                legend:
+                  position: right
+                tooltip: true
+                selectionEnabled: false
+            chartSelection: {}
+            colorMappings: {}
+            resultVariable: filter_result
+            outputResult: false
+            displayTableConfig: null
+  - cellType: CODE
+    cellId: e26cbc56-bee6-4896-8830-ec8a87cea871 # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel:  init lida
+    config:
+      source: |-
+        import os
+        import pkg_resources
+        from lida.components import Manager
+        from lida import llm
+        from lida import datamodel
+        from lida.utils import plot_raster
+        from lida import TextGenerationConfig
+        import streamlit as st
+        from streamlit_jupyter import StreamlitPatcher, tqdm
+
+        api_key = OPENAI_API_KEY
+
+        if api_key is None:
+            raise ValueError(
+                "OpenAI API key is not set. Please set the OPENAI_API_KEY environment variable."
+            )
+
+        lida = Manager(text_gen=llm("openai", api_key=api_key))
+
+        textgen_config = TextGenerationConfig(
+            n=1, temperature=0.5, use_cache=False, max_tokens=None
+        )
+
+        StreamlitPatcher().jupyter()  # register streamlit with jupyter-compatible wrappers
+  - cellType: CODE
+    cellId: 90d7b3d1-b569-4421-96cd-ca72264e9891 # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: summarize function
+    config:
+      source: |
+        import os
+        import pkg_resources
+        from lida import TextGenerationConfig, llm
+        from lida.components import Manager
+        from lida import datamodel
+
+        summary = lida.summarize(
+            data=optionData,
+            file_name="OptionData",
+            summary_method="default",
+            textgen_config=textgen_config,
+        )
+  - cellType: CODE
+    cellId: b467456b-3900-4ab5-98f0-c0dd82fbd7a8 # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: goals output
+    config:
+      source: |
+        import os
+        import pkg_resources
+
+        req = datamodel.GoalWebRequest(summary = summary)
+
+        textgen_config = (
+            req.textgen_config if hasattr(req, "textgen_config") else TextGenerationConfig()
+        )
+        goals = lida.goals(req.summary, n=req.n, textgen_config=textgen_config)
+        goalsQuestions = []
+
+        for goal in goals:
+            st.write(goal)
+            goalsQuestions.append(goal.question)
+  - cellType: INPUT
+    cellId: 02cc592e-b42a-43b1-bcd7-8ddcf4a24de0 # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: FocusGoal
+    config:
+      inputType: DROPDOWN
+      name: focusGoal
+      outputType: DYNAMIC
+      options:
+        valueOptions:
+          variableName: goalsQuestions
+      defaultValue: What is the relationship between last price and days to expiration?
+  - cellType: INPUT
+    cellId: 2922be7c-993d-49e0-8637-8d9d12ca2bef # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: Generate
+    config:
+      inputType: BUTTON
+      name: generate
+      outputType: BOOLEAN
+      options:
+        intent: success
+        icon: play
+        text: Generate
+      defaultValue: null
+  - cellType: CODE
+    cellId: c4c57ca4-6541-4297-af7a-ca427f8f0938 # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: Goal chart mapping
+    config:
+      source: |-
+        charts = []
+        textgen_config = TextGenerationConfig(n=1, temperature=0.2, use_cache=True)
+        goal_chart_mapping = {}  # 创建一个字典来存储 goal 和对应的 chart
+
+
+        if generate:
+            target = None
+            for goal in goals:
+                if goal.question == focusGoal:
+                    target = goal
+                    break
+                else:
+                    target = None
+            
+            if target is not None:
+                charts = lida.visualize(
+                    summary=summary,
+                    goal=target,
+                    textgen_config=textgen_config,
+                    library="seaborn",
+                    return_error=True,
+                )
+                if charts:
+                    for chart in charts:
+                        if chart.raster:
+                            st.write(plot_raster(chart.raster))
+                            st.code(chart.code)
+                            # 将 goal 和 chart 添加到字典中
+                            goal_chart_mapping[goal.index] = chart  # 在这里添加到字典中
+
+                # print("found charts:", len(charts), "for goal:", goal)
+  - cellType: INPUT
+    cellId: a01915dd-1833-4483-91b4-9927843691af # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: Question
+    config:
+      inputType: TEXT_INPUT
+      name: question
+      outputType: STRING
+      options: null
+      defaultValue: ""
+  - cellType: INPUT
+    cellId: 1d65ea99-a627-4bd8-aea1-9a84ef71d34a # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: recommend
+    config:
+      inputType: BUTTON
+      name: recommend
+      outputType: BOOLEAN
+      options:
+        intent: primary
+        icon: play
+        text: Recommend
+      defaultValue: null
+  - cellType: CODE
+    cellId: 0efd00b8-435d-4b25-99e3-b3a8b9d8757c # DO NOT CHANGE - Hex uses this to match up cells when reimporting the file, and detect any changes to existing cells
+    cellLabel: null
+    config:
+      source: |-
+        def initTarget():
+            target = None
+            for goal in goals:
+                if goal.question == focusGoal:
+                    target = goal
+                    break
+
+            targetChart = None
+            if target is not None:
+                if target.index in goal_chart_mapping:
+                    targetChart = goal_chart_mapping[target.index]
+            return target, targetChart
+
+
+        def explain(req: datamodel.VisualizeExplainWebRequest) -> dict:
+            textgen_config = (
+                req.textgen_config
+                if req.textgen_config
+                else TextGenerationConfig(n=1, temperature=0)
+            )
+            explanations = lida.explain(
+                code=req.code, textgen_config=textgen_config, library=req.library
+            )
+            return explanations
+
+
+        if recommend:
+            print(question)
+            target, targetChart = initTarget()
+
+            if targetChart is not None:
+                charts = lida.recommend(
+                    summary=summary,
+                    code=targetChart.code,
+                    textgen_config=textgen_config,
+                    library="seaborn",
+                    return_error=True,
+                )
+
+                if charts:
+                    for chart in charts:
+                        if chart.raster:
+                            st.write(plot_raster(chart.raster))
+                            st.code(chart.code)
+            else:
+                print("targetChart not found")
+appLayout:
+  visibleMetadataFields:
+    - NAME
+    - DESCRIPTION
+    - AUTHOR
+    - LAST_EDITED
+    - LAST_RUN
+    - CATEGORIES
+    - STATUS
+    - TABLE_OF_CONTENTS
+  fullWidth: false
+  tabs:
+    - name: Tab 1
+      rows:
+        - columns:
+            - start: 0
+              end: 30
+              elements:
+                - showSource: false
+                  hideOutput: false
+                  type: CELL
+                  cellId: a01915dd-1833-4483-91b4-9927843691af
+                  sharedFilterId: null
+                  height: null
+                  showLabel: true
+            - start: 30
+              end: 60
+              elements:
+                - showSource: false
+                  hideOutput: false
+                  type: CELL
+                  cellId: 2922be7c-993d-49e0-8637-8d9d12ca2bef
+                  sharedFilterId: null
+                  height: null
+                  showLabel: true
+        - columns:
+            - start: 0
+              end: 120
+              elements:
+                - showSource: false
+                  hideOutput: false
+                  type: CELL
+                  cellId: c4c57ca4-6541-4297-af7a-ca427f8f0938
+                  sharedFilterId: null
+                  height: null
+                  showLabel: true
+        - columns:
+            - start: 0
+              end: 30
+              elements:
+                - showSource: false
+                  hideOutput: false
+                  type: CELL
+                  cellId: 02cc592e-b42a-43b1-bcd7-8ddcf4a24de0
+                  sharedFilterId: null
+                  height: null
+                  showLabel: true
+sharedFilters: []
